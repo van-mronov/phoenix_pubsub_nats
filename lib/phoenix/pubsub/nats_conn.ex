@@ -44,7 +44,7 @@ defmodule Phoenix.PubSub.NatsConn do
   end
 
   def handle_info({:EXIT, _ref, _reason}, %{conn: _pid, status: :connected} = state) do
-    Logger.error "lost Nats connection. Attempting to reconnect..."
+    Logger.error "pid: #{inspect self()}  lost Nats connection. Attempting to reconnect..."
     :timer.send_after(@reconnect_after_ms, :connect)
     {:noreply, %{state | conn: nil, status: :disconnected}}
   end
