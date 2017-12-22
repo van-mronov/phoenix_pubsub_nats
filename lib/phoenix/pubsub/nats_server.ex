@@ -43,6 +43,7 @@ defmodule Phoenix.PubSub.NatsServer do
 
   def handle_call({:subscribe, pid, topic, opts}, _from, state) do
     link = Keyword.get(opts, :link, false)
+    raw_msg = Keyword.get(opts, :raw_msg, false)
 
     subs_list = :ets.lookup(state.subs, topic)
     has_key = case subs_list do
@@ -57,7 +58,8 @@ defmodule Phoenix.PubSub.NatsServer do
                                            topic,
                                            pid,
                                            state.node_ref,
-                                           link)
+                                           link,
+                                           raw_msg)
       Process.monitor(consumer_pid)
 
       if link, do: Process.link(pid)
@@ -77,7 +79,8 @@ defmodule Phoenix.PubSub.NatsServer do
                                             topic,
                                             pid,
                                             state.node_ref,
-                                            link)
+                                            link,
+                                            raw_msg)
         Process.monitor(bk_consumer_pid)
 
         :ets.insert(state.bk_cons, {bk_consumer_pid, {topic, pid}})

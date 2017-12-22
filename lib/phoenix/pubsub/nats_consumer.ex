@@ -3,15 +3,15 @@ defmodule Phoenix.PubSub.NatsConsumer do
   alias Phoenix.PubSub.Nats
   require Logger
 
-  def start_link(conn_pool, topic, pid, node_ref, link) do
-    GenServer.start_link(__MODULE__, [conn_pool, topic, pid, node_ref, link])
+  def start_link(conn_pool, topic, pid, node_ref, link, raw_msg) do
+    GenServer.start_link(__MODULE__, [conn_pool, topic, pid, node_ref, link, raw_msg])
   end
 
-  def start(conn_pool, topic, pid, node_ref, link) do
-    GenServer.start(__MODULE__, [conn_pool, topic, pid, node_ref, link])
+  def start(conn_pool, topic, pid, node_ref, link, raw_msg) do
+    GenServer.start(__MODULE__, [conn_pool, topic, pid, node_ref, link, raw_msg])
   end
 
-  def init([conn_pool, topic, pid, node_ref, link]) do
+  def init([conn_pool, topic, pid, node_ref, link, raw_msg]) do
     Process.flag(:trap_exit, true)
 
     if link, do: Process.link(pid)
@@ -23,7 +23,7 @@ defmodule Phoenix.PubSub.NatsConsumer do
           {:ok, conn, ref}
         end) do
       {:ok, conn, ref} ->
-        {:ok, %{conn: conn, pid: pid, sub_ref: ref, node_ref: node_ref}}
+        {:ok, %{conn: conn, pid: pid, sub_ref: ref, node_ref: node_ref, raw_msg: raw_msg}}
       {:error, :disconnected} ->
         {:stop, :disconnected}
     end
@@ -36,6 +36,11 @@ defmodule Phoenix.PubSub.NatsConsumer do
   def handle_call(:stop, _from, %{conn: conn, sub_ref: ref} = state) do
     Gnat.unsub(conn, ref)
     {:stop, :normal, :ok, state}
+  end
+
+  def handle_info({:msg, msg}, %{raw_msg: true, pid: pid} = state) do
+    send(pid, msg)
+    {:noreply, state}
   end
 
   def handle_info({:msg, %{body: payload, topic: _, reply_to: _}}, state) do
